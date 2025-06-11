@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Algoritmos de Grafos</title>
+  <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+      body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 20px;
+          background-color: #1f1e1e;
+          color: #09ff2a
+      }
+      h1 {
+          color: #09ff2a;
+      }
+      section {
+          margin-bottom: 40px;
+          padding: 20px;
+          background: rgb(26, 24, 24);
+          border-radius: 5px;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      button {
+          padding: 10px 15px;
+          margin-top: 10px;
+          cursor: pointer;
+          color: #09ff2a
+      }
+      #result {
+          margin-top: 20px;
+          font-weight: bold;
+          color: #09ff2a
+          
+      }
+      #mynetwork {
+          width: 100%;
+          height: 400px;
+          border: 1px solid lightgray;
+          color: #09ff2a
+      }
+  </style>
+</head>
+<body>
+
+<h1>Algoritmos de Grafos</h1>
+
+<section id="vertices">
+  <h2>Definir Vértices</h2>
+  <p>Ingresa la cantidad de vértices:</p>
+  <input type="number" id="numVertices" min="2" placeholder="Número de vértices">
+  <button onclick="generarVertices()">Generar Vértices</button>
+</section>
+
+<section id="euler" style="display:none;">
+  <h2>Camino de Euler</h2>
+  <p>Ejemplo de aristas: <span id="eulerExample"></span></p>
+  <p>Ingresa las aristas:</p>
+  <input type="text" id="eulerInput" placeholder="Ejemplo: A-B:3,B-C:5">
+  <button onclick="evaluarEuler()">Evaluar</button>
+  <div id="eulerResult"></div>
+</section>
+
+<section id="hamilton" style="display:none;">
+  <h2>Camino de Hamilton</h2>
+  <p>Ejemplo de aristas: <span id="hamiltonExample"></span></p>
+  <p>Ingresa las aristas:</p>
+  <input type="text" id="hamiltonInput" placeholder="Ejemplo: A-B:3,B-C:5">
+  <button onclick="evaluarHamilton()">Evaluar</button>
+  <div id="hamiltonResult"></div>
+</section>
+
+<section id="dijkstra" style="display:none;">
+  <h2>Ruta más corta Dijkstra</h2>
+  <p>Ejemplo de aristas con pesos: <span id="dijkstraExample"></span></p>
+  <p>Ingresa las aristas:</p>
+  <input type="text" id="dijkstraInput" placeholder="Ejemplo: A-B:1,B-C:2">
+  <p>Ingresa el nodo de inicio:</p>
+  <input type="text" id="startNode" placeholder="Ejemplo: A">
+  <p>Ingresa el nodo de destino:</p>
+  <input type="text" id="endNode" placeholder="Ejemplo: C">
+  <button onclick="evaluarDijkstra()">Evaluar</button>
+  <br> <br/> 
+  <div id="dijkstraResult"></div>
+</section>
+
+<div id="mynetwork"></div>
+
+<script>
+  let vertices = [];
+  let graph = {};
+
+  function generarVertices() {
+      const num = document.getElementById('numVertices').value;
+      vertices = Array.from({ length: num }, (_, i) => String.fromCharCode(65 + i)); // Genera A, B, C, ...
+      
+      document.getElementById('euler').style.display = 'block';
+      document.getElementById('hamilton').style.display = 'block';
+      document.getElementById('dijkstra').style.display = 'block';
+      
+      // Generar ejemplos de aristas
+      const exampleEdges = [];
+      for (let i = 0; i < vertices.length - 1; i++) {
+          const weight = Math.floor(Math.random() * 10) + 1; // Peso aleatorio
+          exampleEdges.push(`${vertices[i]}-${vertices[i + 1]}:${weight}`);
+      }
+      document.getElementById('eulerExample').innerText = exampleEdges.join(', ');
+      document.getElementById('hamiltonExample').innerText = exampleEdges.join(', ');
+      document.getElementById('dijkstraExample').innerText = exampleEdges.join(', ');
+
+      alert(`Vértices generados: ${vertices.join(', ')}`);
+  }
+
+  function evaluarEuler() {
+      const input = document.getElementById('eulerInput').value;
+      const edges = input.split(',').map(edge => edge.trim());
+      const result = edges.length % 2 === 0 ? "El grafo tiene un camino de Euler." : "El grafo no tiene un camino de Euler.";
+      document.getElementById('eulerResult').innerText = result;
+      dibujarGrafo(edges);
+  }
+
+  function evaluarHamilton() {
+      const input = document.getElementById('hamiltonInput').value;
+      const edges = input.split(',').map(edge => edge.trim());
+      const result = edges.length >= 3 ? "El grafo puede tener un camino de Hamilton." : "El grafo no tiene un camino de Hamilton.";
+      document.getElementById('hamiltonResult').innerText = result;
+      dibujarGrafo(edges);
+  }
+
+  function evaluarDijkstra() {
+      const input = document.getElementById('dijkstraInput').value;
+      const edges = input.split(',').map(edge => edge.trim());
+      const startNode = document.getElementById('startNode').value.trim();
+      const endNode = document.getElementById('endNode').value.trim();
+
+      // Construir el grafo
+      graph = {};
+      edges.forEach(edge => {
+          const [fromTo, weight] = edge.split(':');
+          const [from, to] = fromTo.split('-');
+          if (!graph[from]) graph[from] = {};
+          if (!graph[to]) graph[to] = {};
+          graph[from][to] = parseInt(weight);
+          graph[to][from] = parseInt(weight); // Grafo no dirigido
+      });
+
+     const { path, costosAcumulados } = encontrarRutaMasCorta(startNode, endNode);
+     document.getElementById('dijkstraResult').innerText = path.length > 0 ? `Ruta más corta: ${path.join(' -> ')} (Costo: ${costosAcumulados[endNode]})` : "No hay ruta disponible.";
+     dibujarGrafo(edges, path, costosAcumulados);
+
+  }
+
+  function encontrarRutaMasCorta(start, end) {
+      const distances = {};
+      const previous = {};
+      const queue = new Set(vertices);
+
+      // Inicializar distancias
+      vertices.forEach(vertex => {
+          distances[vertex] = Infinity;
+          previous[vertex] = null;
+      });
+      distances[start] = 0;
+
+      while (queue.size) {
+          // Encontrar el nodo con la distancia más corta
+          let currentNode = null;
+          queue.forEach(node => {
+              if (currentNode === null || distances[node] < distances[currentNode]) {
+                  currentNode = node;
+              }
+          });
+
+          if (currentNode === end) break; // Se ha alcanzado el nodo destino
+
+          queue.delete(currentNode);
+
+          // Actualizar distancias de los vecinos
+          for (const neighbor in graph[currentNode]) {
+              const alt = distances[currentNode] + graph[currentNode][neighbor];
+              if (alt < distances[neighbor]) {
+                  distances[neighbor] = alt;
+                  previous[neighbor] = currentNode;
+              }
+          }
+      }
+
+      // Reconstruir el camino
+      const path = [];
+      for (let at = end; at !== null; at = previous[at]) {
+          path.push(at);
+      }
+     path.reverse(); // Orden correcto
+
+        // También construimos un mapa de costos acumulados solo para nodos en la ruta
+        const costosAcumulados = {};
+        path.forEach(nodo => {
+            costosAcumulados[nodo] = distances[nodo];
+        });
+
+        return { path, costosAcumulados };
+  }
+
+    function dibujarGrafo(edges, caminoDestacado = [], costosAcumulados = {}) {
+    const nodes = new vis.DataSet(vertices.map(vertex => ({
+        id: vertex,
+        label: costosAcumulados[vertex] !== undefined ? `${vertex}\n(${costosAcumulados[vertex]})` : vertex,
+        title: costosAcumulados[vertex] !== undefined ? `Costo desde origen: ${costosAcumulados[vertex]}` : ''
+    })));
+
+    const edgesData = new vis.DataSet(edges.map(edge => {
+        const [fromTo, weight] = edge.split(':');
+        const [from, to] = fromTo.split('-');
+        let enCamino = false;
+        for (let i = 0; i < caminoDestacado.length - 1; i++) {
+        if (
+            (caminoDestacado[i] === from && caminoDestacado[i + 1] === to) ||
+            (caminoDestacado[i] === to && caminoDestacado[i + 1] === from)
+        ) {
+            enCamino = true;
+            break;
+        }
+        }
+        return {
+        from,
+        to,
+        label: weight,
+        color: enCamino ? { color: 'red' } : undefined,
+        width: enCamino ? 4 : 1,
+        arrows: 'to',
+        font: { size: 12, align: 'top' }
+        };
+    }));
+
+    const container = document.getElementById('mynetwork');
+    const data = { nodes, edges: edgesData };
+    const options = {
+        edges: { labelHighlightBold: true },
+        nodes: { shape: 'dot', size: 20 }
+    };
+    new vis.Network(container, data, options);
+    }
+
+</script>
+
+</body>
+</html>
